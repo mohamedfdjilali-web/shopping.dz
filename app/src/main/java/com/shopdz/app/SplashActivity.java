@@ -17,15 +17,13 @@ public class SplashActivity extends AppCompatActivity {
     private View whiteCover;
 
     private final Handler handler = new Handler();
-
-    private boolean started = false;
     private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // كل شيء أبيض قبل تشغيل الفيديو
+        // خلفية بيضاء من أول لحظة
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
@@ -39,65 +37,46 @@ public class SplashActivity extends AppCompatActivity {
         whiteCover = findViewById(R.id.whiteCover);
 
         Uri videoUri = Uri.parse(
-                "android.resource://" +
-                        getPackageName() +
-                        "/" +
-                        R.raw.splash
+                "android.resource://" + getPackageName() + "/" + R.raw.splash
         );
 
         splashVideo.setVideoURI(videoUri);
+
+        // مهم: نضع OnInfoListener قبل تشغيل الفيديو
+        splashVideo.setOnInfoListener((mp, what, extra) -> {
+
+            if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+
+                // الفيديو بدأ فعليًا بالرسم على الشاشة
+                whiteCover.setVisibility(View.GONE);
+
+                return true;
+            }
+
+            return false;
+        });
 
         splashVideo.setOnPreparedListener(mp -> {
 
             mp.setLooping(false);
 
-            // بدون صوت
+            // كتم صوت الفيديو
             mp.setVolume(0f, 0f);
 
-            // يبدأ الفيديو
+            // تشغيل الفيديو
             splashVideo.start();
-
-            started = true;
-
-            /*
-             * ننتظر حتى يبدأ Android فعليًا في
-             * رسم أول إطار للفيديو.
-             */
-            mp.setOnInfoListener((player, what, extra) -> {
-
-                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-
-                    // إخفاء الغطاء الأبيض
-                    whiteCover.animate()
-                            .alpha(0f)
-                            .setDuration(100)
-                            .withEndAction(() ->
-                                    whiteCover.setVisibility(View.GONE)
-                            )
-                            .start();
-
-                    return true;
-                }
-
-                return false;
-            });
         });
 
         splashVideo.setOnErrorListener((mp, what, extra) -> {
 
-            // في حالة حدوث خطأ فقط
             openMainActivity();
 
             return true;
         });
 
-        /*
-         * مدة Splash = 2.5 ثانية
-         */
+        // Splash = 2.5 ثانية
         handler.postDelayed(() -> {
-
             openMainActivity();
-
         }, 2500);
     }
 
