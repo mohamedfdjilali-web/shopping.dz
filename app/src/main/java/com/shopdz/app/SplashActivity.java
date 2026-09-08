@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity;
 public class SplashActivity extends AppCompatActivity {
 
     private VideoView splashVideo;
-
     private final Handler handler = new Handler();
 
     private boolean opened = false;
@@ -21,12 +20,23 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // خلفية بيضاء قبل ظهور الفيديو
+        getWindow().setStatusBarColor(android.graphics.Color.WHITE);
+        getWindow().setNavigationBarColor(android.graphics.Color.WHITE);
+
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        );
+
         setContentView(R.layout.activity_splash);
 
         splashVideo = findViewById(R.id.splashVideo);
 
         Uri videoUri = Uri.parse(
-                "android.resource://" + getPackageName() + "/" + R.raw.splash
+                "android.resource://" +
+                        getPackageName() +
+                        "/" +
+                        R.raw.splash
         );
 
         splashVideo.setVideoURI(videoUri);
@@ -35,19 +45,18 @@ public class SplashActivity extends AppCompatActivity {
 
             mp.setLooping(false);
 
+            // إظهار الفيديو فقط بعد أن يصبح جاهزًا
             splashVideo.setVisibility(View.VISIBLE);
 
             splashVideo.start();
         });
 
-        // الانتقال بعد 2.5 ثانية كحد أقصى
-        handler.postDelayed(() -> openMainActivity(), 2500);
+        // الانتقال إلى الموقع بعد 2.5 ثانية
+        handler.postDelayed(() -> {
 
-        splashVideo.setOnCompletionListener(mp -> {
+            openMainActivity();
 
-            // إذا انتهى الفيديو قبل 2.5 ثانية
-            // ننتظر حتى انتهاء المدة المحددة
-        });
+        }, 2500);
     }
 
     private void openMainActivity() {
@@ -64,6 +73,12 @@ public class SplashActivity extends AppCompatActivity {
         );
 
         startActivity(intent);
+
+        // انتقال بدون ظهور شاشة سوداء
+        overridePendingTransition(
+                android.R.anim.fade_in,
+                android.R.anim.fade_out
+        );
 
         finish();
     }
