@@ -43,13 +43,22 @@ public class SplashActivity extends AppCompatActivity {
 
         splashVideo.setOnPreparedListener(mp -> {
 
-            mp.setLooping(false);
+    mp.setLooping(false);
 
-            // إظهار الفيديو فقط بعد أن يصبح جاهزًا
-            splashVideo.setVisibility(View.VISIBLE);
+    splashVideo.setVisibility(View.VISIBLE);
 
-            splashVideo.start();
-        });
+    mp.setVolume(0f, 0f);
+
+    splashVideo.start();
+});
+
+splashVideo.setOnErrorListener((mp, what, extra) -> {
+
+    // إذا فشل الفيديو، افتح الموقع بدل البقاء في شاشة بيضاء
+    openMainActivity();
+
+    return true;
+});
 
         // الانتقال إلى الموقع بعد 2.5 ثانية
         handler.postDelayed(() -> {
