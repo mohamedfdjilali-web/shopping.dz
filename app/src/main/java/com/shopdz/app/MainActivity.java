@@ -9,7 +9,6 @@ import android.webkit.WebViewClient;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.splashscreen.SplashScreen;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,12 +18,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // تشغيل Splash Screen
-        SplashScreen.installSplashScreen(this);
-
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
+
         setContentView(webView);
 
         webView.getSettings().setJavaScriptEnabled(true);
@@ -48,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
                     WebResourceRequest request) {
 
                 view.loadUrl(request.getUrl().toString());
+
                 return true;
             }
         });
@@ -65,8 +63,11 @@ public class MainActivity extends AppCompatActivity {
                     public void handleOnBackPressed() {
 
                         if (webView.canGoBack()) {
+
                             webView.goBack();
+
                         } else {
+
                             finish();
                         }
                     }
