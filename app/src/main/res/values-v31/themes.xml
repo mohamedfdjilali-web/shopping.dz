@@ -5,18 +5,19 @@
     <style name="AppTheme"
         parent="Theme.AppCompat.Light.NoActionBar">
 
+        <!-- Starting window -->
         <item name="android:windowBackground">#FFFFFF</item>
+
+        <!-- Android 12+ Splash -->
+        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
+
+        <!-- لا نريد ظهور أيقونة التطبيق -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
 
         <item name="android:statusBarColor">#FFFFFF</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
 
         <item name="android:windowLightStatusBar">true</item>
-
-        <!-- Android 12+ -->
-        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
-
-        <!-- أيقونة شفافة بدل أيقونة التطبيق -->
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
 
     </style>
 
