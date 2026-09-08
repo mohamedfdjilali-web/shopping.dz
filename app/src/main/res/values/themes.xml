@@ -7,7 +7,7 @@
         parent="Theme.SplashScreen">
 
         <!-- لون خلفية Splash -->
-        <item name="windowSplashScreenBackground">#16A34A</item>
+        <item name="windowSplashScreenBackground">#f2fefe</item>
 
         <!-- أيقونة التطبيق -->
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
