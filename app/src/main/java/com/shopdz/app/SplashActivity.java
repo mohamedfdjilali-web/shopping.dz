@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.View;
 import android.widget.VideoView;
 
@@ -12,16 +11,15 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private VideoView splashVideo;
-
-    private final Handler handler = new Handler();
-
+    private VideoView videoView;
     private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // إزالة أي انتقالات أو خلفيات سوداء
+        getWindow().setBackgroundDrawableResource(android.R.color.white);
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
@@ -31,7 +29,7 @@ public class SplashActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_splash);
 
-        splashVideo = findViewById(R.id.splashVideo);
+        videoView = findViewById(R.id.splashVideo);
 
         Uri videoUri = Uri.parse(
                 "android.resource://" +
@@ -40,41 +38,30 @@ public class SplashActivity extends AppCompatActivity {
                         R.raw.splash
         );
 
-        splashVideo.setVideoURI(videoUri);
+        videoView.setVideoURI(videoUri);
 
-        splashVideo.setOnPreparedListener(mp -> {
-
+        videoView.setOnPreparedListener(mp -> {
+            mp.setVolume(0f, 0f);
             mp.setLooping(false);
 
-            // كتم الصوت
-            mp.setVolume(0f, 0f);
-
-            // تشغيل الفيديو مباشرة
-            splashVideo.start();
-
-            // 2.5 ثانية من بداية تشغيل الفيديو
-            handler.postDelayed(() -> {
-                openMainActivity();
-            }, 2500);
+            // تشغيل الفيديو فورًا
+            videoView.start();
         });
 
-        splashVideo.setOnErrorListener((mp, what, extra) -> {
+        videoView.setOnCompletionListener(mp -> {
+            openMain();
+        });
 
-            openMainActivity();
-
+        videoView.setOnErrorListener((mp, what, extra) -> {
+            openMain();
             return true;
         });
     }
 
-    private void openMainActivity() {
-
-        if (opened) {
-            return;
-        }
+    private void openMain() {
+        if (opened) return;
 
         opened = true;
-
-        handler.removeCallbacksAndMessages(null);
 
         Intent intent = new Intent(
                 SplashActivity.this,
@@ -83,7 +70,6 @@ public class SplashActivity extends AppCompatActivity {
 
         startActivity(intent);
 
-        // انتقال مباشر
         overridePendingTransition(0, 0);
 
         finish();
@@ -91,11 +77,8 @@ public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-
-        handler.removeCallbacksAndMessages(null);
-
-        if (splashVideo != null) {
-            splashVideo.stopPlayback();
+        if (videoView != null) {
+            videoView.stopPlayback();
         }
 
         super.onDestroy();
