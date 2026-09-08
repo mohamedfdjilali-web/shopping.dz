@@ -1,6 +1,7 @@
 package com.shopdz.app;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,16 +14,15 @@ public class SplashActivity extends AppCompatActivity {
 
     private VideoView splashVideo;
     private final Handler handler = new Handler();
-
     private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // خلفية بيضاء قبل ظهور الفيديو
-        getWindow().setStatusBarColor(android.graphics.Color.WHITE);
-        getWindow().setNavigationBarColor(android.graphics.Color.WHITE);
+        // خلفية بيضاء
+        getWindow().setStatusBarColor(Color.WHITE);
+        getWindow().setNavigationBarColor(Color.WHITE);
 
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
@@ -43,28 +43,23 @@ public class SplashActivity extends AppCompatActivity {
 
         splashVideo.setOnPreparedListener(mp -> {
 
-    mp.setLooping(false);
+            mp.setLooping(false);
 
-    splashVideo.setVisibility(View.VISIBLE);
+            // بدون صوت
+            mp.setVolume(0f, 0f);
 
-    mp.setVolume(0f, 0f);
+            splashVideo.start();
+        });
 
-    splashVideo.start();
-});
-
-splashVideo.setOnErrorListener((mp, what, extra) -> {
-
-    // إذا فشل الفيديو، افتح الموقع بدل البقاء في شاشة بيضاء
-    openMainActivity();
-
-    return true;
-});
-
-        // الانتقال إلى الموقع بعد 2.5 ثانية
-        handler.postDelayed(() -> {
-
+        // إذا كان الفيديو غير مدعوم، ندخل للموقع بدل البقاء في الشاشة البيضاء
+        splashVideo.setOnErrorListener((mp, what, extra) -> {
             openMainActivity();
+            return true;
+        });
 
+        // مدة الـ Splash = 2.5 ثانية
+        handler.postDelayed(() -> {
+            openMainActivity();
         }, 2500);
     }
 
@@ -83,7 +78,7 @@ splashVideo.setOnErrorListener((mp, what, extra) -> {
 
         startActivity(intent);
 
-        // انتقال بدون ظهور شاشة سوداء
+        // انتقال ناعم
         overridePendingTransition(
                 android.R.anim.fade_in,
                 android.R.anim.fade_out
