@@ -2,91 +2,113 @@ package com.shopdz.app;
 
 import android.content.Intent;
 import android.graphics.Color;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private VideoView splashVideo;
-    private View whiteCover;
-
+    private VideoView video;
+    private TextView debug;
     private final Handler handler = new Handler();
-    private boolean opened = false;
+
+    private void log(String text) {
+        runOnUiThread(() -> debug.setText(text));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // خلفية بيضاء من أول لحظة
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.WHITE);
+
+        video = new VideoView(this);
+
+        FrameLayout.LayoutParams videoParams =
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        videoParams.gravity = Gravity.CENTER;
+
+        root.addView(video, videoParams);
+
+        debug = new TextView(this);
+        debug.setTextColor(Color.BLACK);
+        debug.setTextSize(18);
+        debug.setGravity(Gravity.CENTER);
+        debug.setText("1 - SplashActivity تعمل");
+
+        FrameLayout.LayoutParams debugParams =
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        debugParams.gravity = Gravity.BOTTOM;
+        debugParams.bottomMargin = 100;
+
+        root.addView(debug, debugParams);
+
+        setContentView(root);
+
+        log("1 - SplashActivity تعمل");
+
+        Uri uri = Uri.parse(
+                "android.resource://" +
+                        getPackageName() +
+                        "/" +
+                        R.raw.splash
         );
 
-        setContentView(R.layout.activity_splash);
+        log("2 - تم العثور على R.raw.splash");
 
-        splashVideo = findViewById(R.id.splashVideo);
-        whiteCover = findViewById(R.id.whiteCover);
+        video.setVideoURI(uri);
 
-        Uri videoUri = Uri.parse(
-                "android.resource://" + getPackageName() + "/" + R.raw.splash
-        );
+        log("3 - setVideoURI تم تنفيذه");
 
-        splashVideo.setVideoURI(videoUri);
+        video.setOnPreparedListener(mp -> {
 
-        // مهم: نضع OnInfoListener قبل تشغيل الفيديو
-        splashVideo.setOnInfoListener((mp, what, extra) -> {
+            log("4 - VIDEO PREPARED");
 
-            if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-
-                // الفيديو بدأ فعليًا بالرسم على الشاشة
-                whiteCover.setVisibility(View.GONE);
-
-                return true;
-            }
-
-            return false;
-        });
-
-        splashVideo.setOnPreparedListener(mp -> {
-
+            mp.setVolume(0f, 0f);
             mp.setLooping(false);
 
-            // كتم صوت الفيديو
-            mp.setVolume(0f, 0f);
+            video.start();
 
-            // تشغيل الفيديو
-            splashVideo.start();
+            log("5 - VIDEO START");
+
+            handler.postDelayed(() -> {
+                log("6 - الانتقال إلى الموقع");
+                openMainActivity();
+            }, 2500);
         });
 
-        splashVideo.setOnErrorListener((mp, what, extra) -> {
+        video.setOnCompletionListener(mp -> {
+            log("VIDEO COMPLETED");
+        });
 
-            openMainActivity();
+        video.setOnErrorListener((mp, what, extra) -> {
+
+            log("❌ VIDEO ERROR: " + what + " / " + extra);
 
             return true;
         });
-
-        // Splash = 2.5 ثانية
-        handler.postDelayed(() -> {
-            openMainActivity();
-        }, 2500);
     }
 
     private void openMainActivity() {
-
-        if (opened) {
-            return;
-        }
-
-        opened = true;
 
         Intent intent = new Intent(
                 SplashActivity.this,
@@ -94,12 +116,6 @@ public class SplashActivity extends AppCompatActivity {
         );
 
         startActivity(intent);
-
-        overridePendingTransition(
-                android.R.anim.fade_in,
-                android.R.anim.fade_out
-        );
-
         finish();
     }
 
@@ -108,8 +124,8 @@ public class SplashActivity extends AppCompatActivity {
 
         handler.removeCallbacksAndMessages(null);
 
-        if (splashVideo != null) {
-            splashVideo.stopPlayback();
+        if (video != null) {
+            video.stopPlayback();
         }
 
         super.onDestroy();
