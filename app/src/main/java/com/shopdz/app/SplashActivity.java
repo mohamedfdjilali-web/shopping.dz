@@ -2,113 +2,120 @@ package com.shopdz.app;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.TextView;
 import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private VideoView video;
-    private TextView debug;
+    private VideoView splashVideo;
+    private View whiteCover;
+
     private final Handler handler = new Handler();
 
-    private void log(String text) {
-        runOnUiThread(() -> debug.setText(text));
-    }
+    private boolean videoStarted = false;
+    private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // أبيض من أول لحظة
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.WHITE);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        );
 
-        video = new VideoView(this);
+        setContentView(R.layout.activity_splash);
 
-        FrameLayout.LayoutParams videoParams =
-                new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT
-                );
+        splashVideo = findViewById(R.id.splashVideo);
+        whiteCover = findViewById(R.id.whiteCover);
 
-        videoParams.gravity = Gravity.CENTER;
-
-        root.addView(video, videoParams);
-
-        debug = new TextView(this);
-        debug.setTextColor(Color.BLACK);
-        debug.setTextSize(18);
-        debug.setGravity(Gravity.CENTER);
-        debug.setText("1 - SplashActivity تعمل");
-
-        FrameLayout.LayoutParams debugParams =
-                new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT
-                );
-
-        debugParams.gravity = Gravity.BOTTOM;
-        debugParams.bottomMargin = 100;
-
-        root.addView(debug, debugParams);
-
-        setContentView(root);
-
-        log("1 - SplashActivity تعمل");
-
-        Uri uri = Uri.parse(
+        Uri videoUri = Uri.parse(
                 "android.resource://" +
                         getPackageName() +
                         "/" +
                         R.raw.splash
         );
 
-        log("2 - تم العثور على R.raw.splash");
+        splashVideo.setVideoURI(videoUri);
 
-        video.setVideoURI(uri);
+        splashVideo.setOnPreparedListener(mp -> {
 
-        log("3 - setVideoURI تم تنفيذه");
-
-        video.setOnPreparedListener(mp -> {
-
-            log("4 - VIDEO PREPARED");
-
-            mp.setVolume(0f, 0f);
             mp.setLooping(false);
 
-            video.start();
+            // بدون صوت
+            mp.setVolume(0f, 0f);
 
-            log("5 - VIDEO START");
+            // تشغيل الفيديو
+            splashVideo.start();
 
+            videoStarted = true;
+
+            /*
+             * مدة الـSplash تبدأ من لحظة تشغيل الفيديو
+             * وليس من لحظة فتح Activity.
+             */
             handler.postDelayed(() -> {
-                log("6 - الانتقال إلى الموقع");
+
                 openMainActivity();
+
             }, 2500);
         });
 
-        video.setOnCompletionListener(mp -> {
-            log("VIDEO COMPLETED");
-        });
+        /*
+         * عندما يرسم Android أول إطار حقيقي
+         * نخفي الغطاء الأبيض.
+         */
+        splashVideo.setOnInfoListener(
+                (mp, what, extra) -> {
 
-        video.setOnErrorListener((mp, what, extra) -> {
+                    if (what ==
+                            MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
 
-            log("❌ VIDEO ERROR: " + what + " / " + extra);
+                        whiteCover.animate()
+                                .alpha(0f)
+                                .setDuration(80)
+                                .withEndAction(() ->
+                                        whiteCover.setVisibility(
+                                                View.GONE
+                                        )
+                                )
+                                .start();
 
-            return true;
-        });
+                        return true;
+                    }
+
+                    return false;
+                }
+        );
+
+        splashVideo.setOnErrorListener(
+                (mp, what, extra) -> {
+
+                    openMainActivity();
+
+                    return true;
+                }
+        );
     }
 
     private void openMainActivity() {
+
+        if (opened) {
+            return;
+        }
+
+        opened = true;
+
+        handler.removeCallbacksAndMessages(null);
 
         Intent intent = new Intent(
                 SplashActivity.this,
@@ -116,6 +123,12 @@ public class SplashActivity extends AppCompatActivity {
         );
 
         startActivity(intent);
+
+        /*
+         * انتقال مباشر بدون Fade.
+         */
+        overridePendingTransition(0, 0);
+
         finish();
     }
 
@@ -124,8 +137,8 @@ public class SplashActivity extends AppCompatActivity {
 
         handler.removeCallbacksAndMessages(null);
 
-        if (video != null) {
-            video.stopPlayback();
+        if (splashVideo != null) {
+            splashVideo.stopPlayback();
         }
 
         super.onDestroy();
