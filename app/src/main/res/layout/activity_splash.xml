@@ -8,9 +8,16 @@
 
     <VideoView
         android:id="@+id/splashVideo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="#FFFFFF" />
+
+    <!-- طبقة بيضاء تمنع الوميض الأسود -->
+    <View
+        android:id="@+id/whiteCover"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center"
-        android:visibility="invisible" />
+        android:background="#FFFFFF" />
 
 </FrameLayout>
