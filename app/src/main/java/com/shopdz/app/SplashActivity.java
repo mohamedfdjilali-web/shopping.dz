@@ -2,6 +2,7 @@ package com.shopdz.app;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,14 +14,18 @@ import androidx.appcompat.app.AppCompatActivity;
 public class SplashActivity extends AppCompatActivity {
 
     private VideoView splashVideo;
+    private View whiteCover;
+
     private final Handler handler = new Handler();
+
+    private boolean started = false;
     private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // خلفية بيضاء
+        // كل شيء أبيض قبل تشغيل الفيديو
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
@@ -31,6 +36,7 @@ public class SplashActivity extends AppCompatActivity {
         setContentView(R.layout.activity_splash);
 
         splashVideo = findViewById(R.id.splashVideo);
+        whiteCover = findViewById(R.id.whiteCover);
 
         Uri videoUri = Uri.parse(
                 "android.resource://" +
@@ -48,18 +54,50 @@ public class SplashActivity extends AppCompatActivity {
             // بدون صوت
             mp.setVolume(0f, 0f);
 
+            // يبدأ الفيديو
             splashVideo.start();
+
+            started = true;
+
+            /*
+             * ننتظر حتى يبدأ Android فعليًا في
+             * رسم أول إطار للفيديو.
+             */
+            mp.setOnInfoListener((player, what, extra) -> {
+
+                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+
+                    // إخفاء الغطاء الأبيض
+                    whiteCover.animate()
+                            .alpha(0f)
+                            .setDuration(100)
+                            .withEndAction(() ->
+                                    whiteCover.setVisibility(View.GONE)
+                            )
+                            .start();
+
+                    return true;
+                }
+
+                return false;
+            });
         });
 
-        // إذا كان الفيديو غير مدعوم، ندخل للموقع بدل البقاء في الشاشة البيضاء
         splashVideo.setOnErrorListener((mp, what, extra) -> {
+
+            // في حالة حدوث خطأ فقط
             openMainActivity();
+
             return true;
         });
 
-        // مدة الـ Splash = 2.5 ثانية
+        /*
+         * مدة Splash = 2.5 ثانية
+         */
         handler.postDelayed(() -> {
+
             openMainActivity();
+
         }, 2500);
     }
 
@@ -78,7 +116,6 @@ public class SplashActivity extends AppCompatActivity {
 
         startActivity(intent);
 
-        // انتقال ناعم
         overridePendingTransition(
                 android.R.anim.fade_in,
                 android.R.anim.fade_out
