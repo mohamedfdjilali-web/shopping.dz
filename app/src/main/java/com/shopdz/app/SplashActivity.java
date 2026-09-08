@@ -2,7 +2,6 @@ package com.shopdz.app;
 
 import android.content.Intent;
 import android.graphics.Color;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,18 +13,15 @@ import androidx.appcompat.app.AppCompatActivity;
 public class SplashActivity extends AppCompatActivity {
 
     private VideoView splashVideo;
-    private View whiteCover;
 
     private final Handler handler = new Handler();
 
-    private boolean videoStarted = false;
     private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // أبيض من أول لحظة
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
@@ -36,7 +32,6 @@ public class SplashActivity extends AppCompatActivity {
         setContentView(R.layout.activity_splash);
 
         splashVideo = findViewById(R.id.splashVideo);
-        whiteCover = findViewById(R.id.whiteCover);
 
         Uri videoUri = Uri.parse(
                 "android.resource://" +
@@ -51,60 +46,24 @@ public class SplashActivity extends AppCompatActivity {
 
             mp.setLooping(false);
 
-            // بدون صوت
+            // كتم الصوت
             mp.setVolume(0f, 0f);
 
-            // تشغيل الفيديو
+            // تشغيل الفيديو مباشرة
             splashVideo.start();
 
-            videoStarted = true;
-
-            /*
-             * مدة الـSplash تبدأ من لحظة تشغيل الفيديو
-             * وليس من لحظة فتح Activity.
-             */
+            // 2.5 ثانية من بداية تشغيل الفيديو
             handler.postDelayed(() -> {
-
                 openMainActivity();
-
             }, 2500);
         });
 
-        /*
-         * عندما يرسم Android أول إطار حقيقي
-         * نخفي الغطاء الأبيض.
-         */
-        splashVideo.setOnInfoListener(
-                (mp, what, extra) -> {
+        splashVideo.setOnErrorListener((mp, what, extra) -> {
 
-                    if (what ==
-                            MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+            openMainActivity();
 
-                        whiteCover.animate()
-                                .alpha(0f)
-                                .setDuration(80)
-                                .withEndAction(() ->
-                                        whiteCover.setVisibility(
-                                                View.GONE
-                                        )
-                                )
-                                .start();
-
-                        return true;
-                    }
-
-                    return false;
-                }
-        );
-
-        splashVideo.setOnErrorListener(
-                (mp, what, extra) -> {
-
-                    openMainActivity();
-
-                    return true;
-                }
-        );
+            return true;
+        });
     }
 
     private void openMainActivity() {
@@ -124,9 +83,7 @@ public class SplashActivity extends AppCompatActivity {
 
         startActivity(intent);
 
-        /*
-         * انتقال مباشر بدون Fade.
-         */
+        // انتقال مباشر
         overridePendingTransition(0, 0);
 
         finish();
