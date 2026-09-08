@@ -1,9 +1,7 @@
 package com.shopdz.app;
 
 import android.annotation.SuppressLint;
-import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -11,6 +9,7 @@ import android.webkit.WebViewClient;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.splashscreen.SplashScreen;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,12 +18,14 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // تشغيل Splash Screen
+        SplashScreen.installSplashScreen(this);
+
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
         setContentView(webView);
-
-        WebView.setWebContentsDebuggingEnabled(false);
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
@@ -49,29 +50,13 @@ public class MainActivity extends AppCompatActivity {
                 view.loadUrl(request.getUrl().toString());
                 return true;
             }
-
-            @Override
-            public void onPageStarted(
-                    WebView view,
-                    String url,
-                    Bitmap favicon) {
-
-                super.onPageStarted(view, url, favicon);
-            }
-
-            @Override
-            public void onPageFinished(
-                    WebView view,
-                    String url) {
-
-                super.onPageFinished(view, url);
-            }
         });
 
         webView.setWebChromeClient(new WebChromeClient());
 
+        // موقع SHOP-DZ
         webView.loadUrl("https://shop-dz.gt.tc");
-        
+
         getOnBackPressedDispatcher().addCallback(
                 this,
                 new OnBackPressedCallback(true) {
