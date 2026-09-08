@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <style name="AppTheme"
+        parent="Theme.AppCompat.Light.NoActionBar">
+
+        <item name="android:windowBackground">#FFFFFF</item>
+
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!-- Android 12+ -->
+        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
+
+        <!-- أيقونة شفافة بدل أيقونة التطبيق -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
+
+    </style>
+
+</resources>
