@@ -6,6 +6,14 @@
     android:layout_height="match_parent"
     android:background="#FFFFFF">
 
+    <!-- الموقع يتم تحميله خلف الفيديو -->
+    <WebView
+        android:id="@+id/splashWebView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="visible" />
+
+    <!-- الفيديو فوق الموقع -->
     <VideoView
         android:id="@+id/splashVideo"
         android:layout_width="match_parent"
