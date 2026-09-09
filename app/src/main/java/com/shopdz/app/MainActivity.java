@@ -1,14 +1,13 @@
 package com.shopdz.app;
 
 import android.annotation.SuppressLint;
-import android.graphics.Color;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -18,55 +17,46 @@ import android.widget.FrameLayout;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements TextureView.SurfaceTextureListener {
 
     private WebView webView;
-    private TextureView splashView;
+    private TextureView videoView;
     private MediaPlayer mediaPlayer;
-    private Surface videoSurface;
 
-    private boolean pageLoaded = false;
     private boolean videoFinished = false;
-    private boolean splashClosed = false;
+    private boolean pageFinished = false;
 
-    // حجم الفيديو بالنسبة للشاشة
-    private int videoWidth = 500;
-    private int videoHeight = 500;
+    // ==============================
+    // حجم مربع الفيديو
+    // ==============================
+    // 0.70 = 70% من أقصر بُعد في الشاشة
+    // غيّرها إلى:
+    // 0.60 = أصغر
+    // 0.80 = أكبر
+    // 1.00 = أكبر حجم ممكن
+    private static final float VIDEO_SIZE = 0.70f;
+
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ==============================
-        // شاشة بيضاء
-        // ==============================
-
-        getWindow().setBackgroundDrawableResource(
-                android.R.color.white
-        );
-
-        getWindow().setStatusBarColor(Color.WHITE);
-        getWindow().setNavigationBarColor(Color.WHITE);
-
-        // ==============================
-        // Root
-        // ==============================
-
+        // ==========================================
+        // الحاوية الرئيسية
+        // ==========================================
         FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(0xFFFFFFFF);
 
-        root.setBackgroundColor(Color.WHITE);
+        setContentView(root);
 
-        // ==============================
+
+        // ==========================================
         // WebView
-        // ==============================
-
+        // ==========================================
         webView = new WebView(this);
 
-        webView.setBackgroundColor(Color.WHITE);
-
-        // مهم جدًا:
-        // الموقع مخفي أثناء الـSplash
         webView.setVisibility(View.INVISIBLE);
 
         webView.getSettings().setJavaScriptEnabled(true);
@@ -76,146 +66,91 @@ public class MainActivity extends AppCompatActivity {
         webView.getSettings().setAllowFileAccess(true);
         webView.getSettings().setAllowContentAccess(true);
 
-        webView.getSettings().setLoadsImagesAutomatically(true);
-
         webView.getSettings().setSupportZoom(false);
         webView.getSettings().setBuiltInZoomControls(false);
         webView.getSettings().setDisplayZoomControls(false);
 
-        webView.setWebChromeClient(
-                new WebChromeClient()
-        );
+        webView.getSettings().setLoadsImagesAutomatically(true);
 
-        webView.setWebViewClient(
-                new WebViewClient() {
+        webView.setWebViewClient(new WebViewClient() {
 
-                    @Override
-                    public boolean shouldOverrideUrlLoading(
-                            WebView view,
-                            WebResourceRequest request
-                    ) {
+            @Override
+            public boolean shouldOverrideUrlLoading(
+                    WebView view,
+                    WebResourceRequest request) {
 
-                        return false;
-                    }
+                view.loadUrl(request.getUrl().toString());
+                return true;
+            }
 
-                    @Override
-                    public void onPageFinished(
-                            WebView view,
-                            String url
-                    ) {
+            @Override
+            public void onPageFinished(
+                    WebView view,
+                    String url) {
 
-                        pageLoaded = true;
+                super.onPageFinished(view, url);
 
-                        checkSplash();
-                    }
-                }
-        );
+                pageFinished = true;
+
+                showWebsiteIfReady();
+            }
+        });
+
+        webView.setWebChromeClient(new WebChromeClient());
 
         FrameLayout.LayoutParams webParams =
                 new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
                 );
 
         root.addView(webView, webParams);
 
-        // ==============================
-        // TextureView
-        // ==============================
 
-        splashView = new TextureView(this);
+        // ==========================================
+        // مربع الفيديو
+        // ==========================================
+        videoView = new TextureView(this);
 
-        splashView.setOpaque(false);
+        videoView.setOpaque(false);
+        videoView.setSurfaceTextureListener(this);
 
-        /*
-         * سنضع الفيديو في وسط الشاشة.
-         * لن نجعله MATCH_PARENT مباشرة،
-         * حتى لا يتمدد الفيديو المربع.
-         */
+        // حساب حجم المربع
+        int screenWidth = getResources()
+                .getDisplayMetrics().widthPixels;
 
-        FrameLayout.LayoutParams splashParams =
+        int screenHeight = getResources()
+                .getDisplayMetrics().heightPixels;
+
+        int smallestSide = Math.min(screenWidth, screenHeight);
+
+        int videoSize = (int) (smallestSide * VIDEO_SIZE);
+
+
+        // ==========================================
+        // وضع الفيديو في منتصف الشاشة
+        // ==========================================
+        FrameLayout.LayoutParams videoParams =
                 new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
+                        videoSize,
+                        videoSize
                 );
 
-        splashParams.gravity = Gravity.CENTER;
+        videoParams.gravity =
+                android.view.Gravity.CENTER;
 
-        root.addView(splashView, splashParams);
+        root.addView(videoView, videoParams);
 
-        // الفيديو فوق WebView
-        splashView.bringToFront();
 
-        setContentView(root);
+        // ==========================================
+        // تحميل الموقع مباشرة في الخلفية
+        // ==========================================
+        webView.loadUrl("https://shop-dz.gt.tc");
 
-        // ==============================
-        // TextureView Listener
-        // ==============================
 
-        splashView.setSurfaceTextureListener(
-                new TextureView.SurfaceTextureListener() {
-
-                    @Override
-                    public void onSurfaceTextureAvailable(
-                            SurfaceTexture surfaceTexture,
-                            int width,
-                            int height
-                    ) {
-
-                        videoSurface =
-                                new Surface(surfaceTexture);
-
-                        startSplashVideo(
-                                width,
-                                height
-                        );
-                    }
-
-                    @Override
-                    public void onSurfaceTextureSizeChanged(
-                            SurfaceTexture surfaceTexture,
-                            int width,
-                            int height
-                    ) {
-
-                        adjustVideoSize(width, height);
-                    }
-
-                    @Override
-                    public boolean onSurfaceTextureDestroyed(
-                            SurfaceTexture surfaceTexture
-                    ) {
-
-                        if (videoSurface != null) {
-
-                            videoSurface.release();
-
-                            videoSurface = null;
-                        }
-
-                        return true;
-                    }
-
-                    @Override
-                    public void onSurfaceTextureUpdated(
-                            SurfaceTexture surfaceTexture
-                    ) {
-                    }
-                }
-        );
-
-        // ==============================
-        // تحميل الموقع في الخلفية
-        // ==============================
-
-        webView.loadUrl(
-                "https://shop-dz.gt.tc"
-        );
-
-        // ==============================
+        // ==========================================
         // زر الرجوع
-        // ==============================
-
+        // ==========================================
         getOnBackPressedDispatcher().addCallback(
                 this,
                 new OnBackPressedCallback(true) {
@@ -223,13 +158,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void handleOnBackPressed() {
 
-                        if (webView != null &&
-                                webView.canGoBack()) {
-
+                        if (webView.canGoBack()) {
                             webView.goBack();
-
                         } else {
-
                             finish();
                         }
                     }
@@ -237,257 +168,118 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    // =========================================================
-    // تشغيل الفيديو
-    // =========================================================
 
-    private void startSplashVideo(
-            int screenWidth,
-            int screenHeight
-    ) {
+    // ==================================================
+    // TextureView أصبح جاهزًا
+    // ==================================================
 
-        try {
+    @Override
+    public void onSurfaceTextureAvailable(
+            SurfaceTexture surfaceTexture,
+            int width,
+            int height) {
 
-            mediaPlayer = MediaPlayer.create(
-                    this,
-                    R.raw.splash
-            );
+        Surface surface = new Surface(surfaceTexture);
 
-            if (mediaPlayer == null) {
+        mediaPlayer = MediaPlayer.create(
+                this,
+                com.shopdz.app.R.raw.splash
+        );
 
-                videoFinished = true;
+        if (mediaPlayer == null) {
+            videoFinished = true;
+            videoView.setVisibility(View.GONE);
+            showWebsiteIfReady();
+            return;
+        }
 
-                checkSplash();
+        mediaPlayer.setSurface(surface);
 
-                return;
-            }
+        surface.release();
 
-            // ==============================
-            // الحصول على المقاس الحقيقي
-            // ==============================
-
-            videoWidth =
-                    mediaPlayer.getVideoWidth();
-
-            videoHeight =
-                    mediaPlayer.getVideoHeight();
-
-            if (videoWidth <= 0) {
-                videoWidth = 500;
-            }
-
-            if (videoHeight <= 0) {
-                videoHeight = 500;
-            }
-
-            // ==============================
-            // Surface
-            // ==============================
-
-            mediaPlayer.setSurface(
-                    videoSurface
-            );
-
-            mediaPlayer.setVolume(
-                    0f,
-                    0f
-            );
-
-            mediaPlayer.setLooping(false);
-
-            // ==============================
-            // عند جاهزية الفيديو
-            // ==============================
-
-            mediaPlayer.setOnPreparedListener(
-                    mp -> {
-
-                        adjustVideoSize(
-                                splashView.getWidth(),
-                                splashView.getHeight()
-                        );
-
-                        mp.start();
-                    }
-            );
-
-            // ==============================
-            // نهاية الفيديو
-            // ==============================
-
-            mediaPlayer.setOnCompletionListener(
-                    mp -> {
-
-                        videoFinished = true;
-
-                        checkSplash();
-                    }
-            );
-
-            // ==============================
-            // خطأ الفيديو
-            // ==============================
-
-            mediaPlayer.setOnErrorListener(
-                    (mp, what, extra) -> {
-
-                        videoFinished = true;
-
-                        checkSplash();
-
-                        return true;
-                    }
-            );
-
-        } catch (Exception e) {
+        mediaPlayer.setOnCompletionListener(mp -> {
 
             videoFinished = true;
 
-            checkSplash();
-        }
+            videoView.setVisibility(View.GONE);
+
+            mp.release();
+            mediaPlayer = null;
+
+            showWebsiteIfReady();
+        });
+
+        mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+
+            videoFinished = true;
+
+            videoView.setVisibility(View.GONE);
+
+            mp.release();
+            mediaPlayer = null;
+
+            showWebsiteIfReady();
+
+            return true;
+        });
+
+        mediaPlayer.start();
     }
 
-    // =========================================================
-    // ضبط مقاس الفيديو بدون تشويه
-    // =========================================================
 
-    private void adjustVideoSize(
-            int screenWidth,
-            int screenHeight
-    ) {
-
-        if (screenWidth <= 0 ||
-                screenHeight <= 0 ||
-                videoWidth <= 0 ||
-                videoHeight <= 0) {
-
-            return;
-        }
-
-        /*
-         * نسبة الفيديو الأصلية
-         *
-         * 500 / 500 = 1:1
-         */
-
-        float videoRatio =
-                (float) videoWidth /
-                (float) videoHeight;
-
-        /*
-         * نسبة الشاشة
-         */
-
-        float screenRatio =
-                (float) screenWidth /
-                (float) screenHeight;
-
-        android.graphics.Matrix matrix =
-                new android.graphics.Matrix();
-
-        /*
-         * نريد الفيديو بدون Stretch.
-         *
-         * الفيديو يبقى 1:1.
-         */
-
-        if (screenRatio > videoRatio) {
-
-            // الشاشة أعرض من الفيديو
-
-            float scale =
-                    (float) screenHeight /
-                    (float) screenHeight;
-
-            matrix.setScale(
-                    scale,
-                    scale,
-                    screenWidth / 2f,
-                    screenHeight / 2f
-            );
-
-        } else {
-
-            // الشاشة أطول من الفيديو
-
-            float scale =
-                    (float) screenWidth /
-                    (float) screenWidth;
-
-            matrix.setScale(
-                    scale,
-                    scale,
-                    screenWidth / 2f,
-                    screenHeight / 2f
-            );
-        }
-
-        splashView.setTransform(matrix);
+    @Override
+    public void onSurfaceTextureSizeChanged(
+            SurfaceTexture surface,
+            int width,
+            int height) {
     }
 
-    // =========================================================
-    // فحص Splash
-    // =========================================================
 
-    private void checkSplash() {
+    @Override
+    public boolean onSurfaceTextureDestroyed(
+            SurfaceTexture surface) {
 
-        /*
-         * لا نخفي الفيديو إلا بعد:
-         *
-         * الفيديو انتهى
-         * +
-         * الموقع انتهى من التحميل
-         */
-
-        if (videoFinished &&
-                pageLoaded) {
-
-            closeSplash();
-        }
-    }
-
-    // =========================================================
-    // إخفاء Splash
-    // =========================================================
-
-    private void closeSplash() {
-
-        if (splashClosed) {
-            return;
-        }
-
-        splashClosed = true;
-
-        // الموقع يظهر كاملًا
-        webView.setVisibility(
-                View.VISIBLE
-        );
-
-        // إخفاء الفيديو
-        if (splashView != null) {
-
-            splashView.setVisibility(
-                    View.GONE
-            );
-        }
-
-        // تحرير MediaPlayer
         if (mediaPlayer != null) {
 
-            try {
+            if (mediaPlayer.isPlaying()) {
                 mediaPlayer.stop();
-            } catch (Exception ignored) {
             }
 
             mediaPlayer.release();
-
             mediaPlayer = null;
+        }
+
+        return true;
+    }
+
+
+    @Override
+    public void onSurfaceTextureUpdated(
+            SurfaceTexture surface) {
+    }
+
+
+    // ==================================================
+    // إظهار الموقع فقط بعد انتهاء الفيديو وتحميل الموقع
+    // ==================================================
+
+    private void showWebsiteIfReady() {
+
+        if (videoFinished && pageFinished) {
+
+            webView.post(() -> {
+
+                webView.setVisibility(View.VISIBLE);
+                videoView.setVisibility(View.GONE);
+
+            });
         }
     }
 
-    // =========================================================
-    // Destroy
-    // =========================================================
+
+    // ==================================================
+    // تنظيف
+    // ==================================================
 
     @Override
     protected void onDestroy() {
@@ -495,27 +287,15 @@ public class MainActivity extends AppCompatActivity {
         if (mediaPlayer != null) {
 
             try {
-                mediaPlayer.stop();
+                mediaPlayer.release();
             } catch (Exception ignored) {
             }
-
-            mediaPlayer.release();
 
             mediaPlayer = null;
         }
 
-        if (videoSurface != null) {
-
-            videoSurface.release();
-
-            videoSurface = null;
-        }
-
         if (webView != null) {
-
             webView.destroy();
-
-            webView = null;
         }
 
         super.onDestroy();
