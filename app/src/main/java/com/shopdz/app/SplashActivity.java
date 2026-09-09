@@ -2,11 +2,13 @@ package com.shopdz.app;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.View;
+import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -14,21 +16,28 @@ public class SplashActivity extends AppCompatActivity {
 
     private TextureView textureView;
     private MediaPlayer mediaPlayer;
-    private boolean opened = false;
+    private Surface surface;
 
     private final Handler handler = new Handler();
+
+    private boolean videoStarted = false;
+    private boolean opened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // أبيض من أول لحظة
-        getWindow().setBackgroundDrawableResource(android.R.color.white);
+        // منع أي لون أسود
+        getWindow().setBackgroundDrawableResource(
+                android.R.color.white
+        );
+
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
         getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
+                View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         );
 
         setContentView(R.layout.activity_splash);
@@ -40,26 +49,29 @@ public class SplashActivity extends AppCompatActivity {
 
                     @Override
                     public void onSurfaceTextureAvailable(
-                            android.graphics.SurfaceTexture surface,
+                            SurfaceTexture surfaceTexture,
                             int width,
                             int height) {
 
-                        startVideo(surface);
+                        surface = new Surface(surfaceTexture);
+
+                        prepareVideo();
                     }
 
                     @Override
                     public void onSurfaceTextureSizeChanged(
-                            android.graphics.SurfaceTexture surface,
+                            SurfaceTexture surfaceTexture,
                             int width,
                             int height) {
                     }
 
                     @Override
                     public boolean onSurfaceTextureDestroyed(
-                            android.graphics.SurfaceTexture surface) {
+                            SurfaceTexture surfaceTexture) {
 
-                        if (mediaPlayer != null) {
-                            mediaPlayer.setSurface(null);
+                        if (surface != null) {
+                            surface.release();
+                            surface = null;
                         }
 
                         return true;
@@ -67,13 +79,13 @@ public class SplashActivity extends AppCompatActivity {
 
                     @Override
                     public void onSurfaceTextureUpdated(
-                            android.graphics.SurfaceTexture surface) {
+                            SurfaceTexture surfaceTexture) {
                     }
                 }
         );
     }
 
-    private void startVideo(android.graphics.SurfaceTexture surface) {
+    private void prepareVideo() {
 
         try {
 
@@ -87,10 +99,7 @@ public class SplashActivity extends AppCompatActivity {
                 return;
             }
 
-            android.view.Surface videoSurface =
-                    new android.view.Surface(surface);
-
-            mediaPlayer.setSurface(videoSurface);
+            mediaPlayer.setSurface(surface);
 
             mediaPlayer.setVolume(0f, 0f);
 
@@ -98,9 +107,14 @@ public class SplashActivity extends AppCompatActivity {
 
             mediaPlayer.setOnPreparedListener(mp -> {
 
+                videoStarted = true;
+
                 mp.start();
 
-                // نعرض السلاش لمدة 2.5 ثانية فقط
+                /*
+                 * ننتظر 2.5 ثانية فقط.
+                 * بعدها نفتح الموقع.
+                 */
                 handler.postDelayed(() -> {
                     openMain();
                 }, 2500);
@@ -110,12 +124,14 @@ public class SplashActivity extends AppCompatActivity {
                 openMain();
             });
 
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                openMain();
-                return true;
-            });
+            mediaPlayer.setOnErrorListener(
+                    (mp, what, extra) -> {
 
-            mediaPlayer.prepareAsync();
+                        openMain();
+
+                        return true;
+                    }
+            );
 
         } catch (Exception e) {
 
@@ -153,12 +169,20 @@ public class SplashActivity extends AppCompatActivity {
         if (mediaPlayer != null) {
 
             try {
-                mediaPlayer.stop();
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
             } catch (Exception ignored) {
             }
 
+            mediaPlayer.reset();
             mediaPlayer.release();
             mediaPlayer = null;
+        }
+
+        if (surface != null) {
+            surface.release();
+            surface = null;
         }
 
         super.onDestroy();
