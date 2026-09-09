@@ -1,19 +1,29 @@
 package com.shopdz.app;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Color;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
+import android.os.Handler;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private VideoView videoView;
+    private VideoView splashVideo;
+    private WebView webView;
 
+    private final Handler handler = new Handler();
+
+    private boolean pageLoaded = false;
+    private boolean splashFinished = false;
+    private boolean opened = false;
+
+    @SuppressLint({"SetJavaScriptEnabled", "SetTextI18n"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -22,56 +32,99 @@ public class SplashActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
-                View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        );
-
         setContentView(R.layout.activity_splash);
 
-        videoView = findViewById(R.id.splashVideo);
+        splashVideo = findViewById(R.id.splashVideo);
+        webView = findViewById(R.id.splashWebView);
 
-        Uri videoUri = Uri.parse(
+        // إعداد WebView أثناء عرض الفيديو
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        webView.getSettings().setDatabaseEnabled(true);
+        webView.getSettings().setAllowFileAccess(true);
+        webView.getSettings().setAllowContentAccess(true);
+        webView.getSettings().setLoadsImagesAutomatically(true);
+
+        webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                pageLoaded = true;
+
+                tryOpenMain();
+            }
+        });
+
+        webView.setWebChromeClient(new WebChromeClient());
+
+        // ابدأ تحميل الموقع فورًا
+        webView.loadUrl("https://shop-dz.gt.tc");
+
+        // تشغيل فيديو Splash
+        splashVideo.setVideoPath(
                 "android.resource://" +
                 getPackageName() +
                 "/" +
                 R.raw.splash
         );
 
-        videoView.setVideoURI(videoUri);
+        splashVideo.setOnPreparedListener(mp -> {
 
-        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
+            mp.setVolume(0f, 0f);
+            mp.setLooping(false);
 
-                mp.setVolume(0f, 0f);
-                mp.setLooping(false);
+            splashVideo.start();
 
-                videoView.start();
-            }
+            // Splash = 2.5 ثانية
+            handler.postDelayed(() -> {
+
+                splashFinished = true;
+
+                tryOpenMain();
+
+            }, 2500);
         });
 
-        videoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                openWebsite();
-            }
-        });
+        splashVideo.setOnErrorListener((mp, what, extra) -> {
 
-        videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-            @Override
-            public boolean onError(MediaPlayer mp, int what, int extra) {
+            // إذا تعذر تشغيل الفيديو، لا نبقى عالقين
+            splashFinished = true;
 
-                // لا نغلق التطبيق عند حدوث خطأ
-                // نفتح الموقع مباشرة
-                openWebsite();
+            tryOpenMain();
 
-                return true;
-            }
+            return true;
         });
     }
 
-    private void openWebsite() {
+    private void tryOpenMain() {
+
+        /*
+         * لا نفتح MainActivity إلا عندما:
+         *
+         * 1. انتهت 2.5 ثانية
+         * 2. الموقع انتهى من التحميل
+         */
+        if (splashFinished && pageLoaded) {
+            openMain();
+        }
+    }
+
+    private void openMain() {
+
+        if (opened) {
+            return;
+        }
+
+        opened = true;
+
+        handler.removeCallbacksAndMessages(null);
+
+        /*
+         * نعطي WebView الذي تم تحميله إلى MainActivity
+         */
+        MainActivity.webViewFromSplash = webView;
+
+        webView = null;
 
         Intent intent = new Intent(
                 SplashActivity.this,
@@ -88,8 +141,14 @@ public class SplashActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
 
-        if (videoView != null) {
-            videoView.stopPlayback();
+        handler.removeCallbacksAndMessages(null);
+
+        if (splashVideo != null) {
+            splashVideo.stopPlayback();
+        }
+
+        if (webView != null) {
+            webView.destroy();
         }
 
         super.onDestroy();
