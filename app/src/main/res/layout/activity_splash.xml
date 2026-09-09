@@ -6,10 +6,11 @@
     android:layout_height="match_parent"
     android:background="#FFFFFF">
 
-    <TextureView
-        android:id="@+id/splashTexture"
+    <VideoView
+        android:id="@+id/splashVideo"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_gravity="center"
         android:background="#FFFFFF" />
 
 </FrameLayout>
