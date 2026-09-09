@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private final Handler handler = new Handler();
 
     private boolean pageLoaded = false;
-    private boolean splashTimeFinished = false;
+    private boolean splashFinished = false;
     private boolean splashClosed = false;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -31,32 +31,42 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // خلفية بيضاء من البداية
-        getWindow().setBackgroundDrawableResource(android.R.color.white);
+        getWindow().setBackgroundDrawableResource(
+                android.R.color.white
+        );
+
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
-        // إنشاء الحاوية
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.WHITE);
 
         // =========================
-        // WebView
+        // WEBVIEW
         // =========================
+
         webView = new WebView(this);
+
+        // مهم جدًا:
+        // الموقع يكون مخفيًا أثناء التحميل
+        webView.setVisibility(View.INVISIBLE);
 
         webView.setBackgroundColor(Color.WHITE);
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setDatabaseEnabled(true);
+
         webView.getSettings().setAllowFileAccess(true);
         webView.getSettings().setAllowContentAccess(true);
+
         webView.getSettings().setLoadsImagesAutomatically(true);
 
         webView.getSettings().setSupportZoom(false);
         webView.getSettings().setBuiltInZoomControls(false);
         webView.getSettings().setDisplayZoomControls(false);
+
+        webView.setWebChromeClient(new WebChromeClient());
 
         webView.setWebViewClient(new WebViewClient() {
 
@@ -69,13 +79,15 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPageFinished(WebView view, String url) {
+            public void onPageFinished(
+                    WebView view,
+                    String url) {
+
                 pageLoaded = true;
+
                 checkSplash();
             }
         });
-
-        webView.setWebChromeClient(new WebChromeClient());
 
         FrameLayout.LayoutParams webParams =
                 new FrameLayout.LayoutParams(
@@ -86,8 +98,9 @@ public class MainActivity extends AppCompatActivity {
         root.addView(webView, webParams);
 
         // =========================
-        // Video
+        // VIDEO
         // =========================
+
         videoView = new VideoView(this);
 
         videoView.setBackgroundColor(Color.WHITE);
@@ -100,23 +113,27 @@ public class MainActivity extends AppCompatActivity {
 
         root.addView(videoView, videoParams);
 
+        // الفيديو فوق الموقع
+        videoView.bringToFront();
+
         setContentView(root);
 
         // =========================
-        // تحميل الموقع مباشرة
+        // ابدأ تحميل الموقع فورًا
         // =========================
+
         webView.loadUrl("https://shop-dz.gt.tc");
 
         // =========================
         // تشغيل الفيديو
         // =========================
-        String videoPath =
+
+        videoView.setVideoPath(
                 "android.resource://" +
                 getPackageName() +
                 "/" +
-                com.shopdz.app.R.raw.splash;
-
-        videoView.setVideoPath(videoPath);
+                R.raw.splash
+        );
 
         videoView.setOnPreparedListener(mp -> {
 
@@ -125,36 +142,29 @@ public class MainActivity extends AppCompatActivity {
 
             videoView.start();
 
-            // مدة الـSplash = 2.5 ثانية
+            // 2.5 ثانية
             handler.postDelayed(() -> {
 
-                splashTimeFinished = true;
+                splashFinished = true;
+
                 checkSplash();
 
             }, 2500);
         });
 
-        // إذا حدث خطأ في الفيديو لا يحدث Crash
         videoView.setOnErrorListener((mp, what, extra) -> {
 
-            splashTimeFinished = true;
+            splashFinished = true;
+
             checkSplash();
 
             return true;
         });
 
-        // حماية: إذا الموقع تأخر جدًا
-        handler.postDelayed(() -> {
-
-            if (!splashClosed) {
-                splashTimeFinished = true;
-                pageLoaded = true;
-                closeSplash();
-            }
-
-        }, 10000);
-
+        // =========================
         // زر الرجوع
+        // =========================
+
         getOnBackPressedDispatcher().addCallback(
                 this,
                 new OnBackPressedCallback(true) {
@@ -162,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void handleOnBackPressed() {
 
-                        if (webView != null && webView.canGoBack()) {
+                        if (webView.canGoBack()) {
                             webView.goBack();
                         } else {
                             finish();
@@ -174,8 +184,24 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkSplash() {
 
-        if (splashTimeFinished && pageLoaded) {
-            closeSplash();
+        /*
+         * لا نكشف الموقع إلا عندما:
+         *
+         * 1 - ينتهي الفيديو 2.5 ثانية
+         * 2 - تنتهي الصفحة من التحميل
+         */
+
+        if (splashFinished && pageLoaded) {
+
+            /*
+             * ننتظر 300ms إضافية حتى ينتهي WebView
+             * من الرسم النهائي للصفحة.
+             */
+            handler.postDelayed(() -> {
+
+                closeSplash();
+
+            }, 300);
         }
     }
 
@@ -189,16 +215,12 @@ public class MainActivity extends AppCompatActivity {
 
         handler.removeCallbacksAndMessages(null);
 
-        // إيقاف الفيديو وإخفاؤه
-        if (videoView != null) {
-            videoView.stopPlayback();
-            videoView.setVisibility(View.GONE);
-        }
+        // أولًا أظهر الموقع
+        webView.setVisibility(View.VISIBLE);
 
-        // الموقع يظهر مباشرة
-        if (webView != null) {
-            webView.setVisibility(View.VISIBLE);
-        }
+        // ثم أخفِ الفيديو
+        videoView.stopPlayback();
+        videoView.setVisibility(View.GONE);
     }
 
     @Override
