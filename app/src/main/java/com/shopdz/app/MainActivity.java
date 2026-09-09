@@ -12,6 +12,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static WebView webViewFromSplash;
+
     private WebView webView;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -20,9 +22,51 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
-        webView = new WebView(this);
+        /*
+         * إذا كان WebView قد تم تحميله مسبقًا في SplashActivity
+         * نستخدمه مباشرة بدل إعادة تحميل الموقع.
+         */
+        if (webViewFromSplash != null) {
 
-        setContentView(webView);
+            webView = webViewFromSplash;
+
+            webViewFromSplash = null;
+
+            setContentView(webView);
+
+        } else {
+
+            webView = new WebView(this);
+
+            setContentView(webView);
+
+            setupWebView();
+
+            webView.loadUrl("https://shop-dz.gt.tc");
+        }
+
+        getOnBackPressedDispatcher().addCallback(
+                this,
+                new OnBackPressedCallback(true) {
+
+                    @Override
+                    public void handleOnBackPressed() {
+
+                        if (webView != null && webView.canGoBack()) {
+
+                            webView.goBack();
+
+                        } else {
+
+                            finish();
+                        }
+                    }
+                }
+        );
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupWebView() {
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
@@ -44,42 +88,23 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     WebResourceRequest request) {
 
-                view.loadUrl(request.getUrl().toString());
-
-                return true;
+                return false;
             }
         });
 
         webView.setWebChromeClient(new WebChromeClient());
-
-        // موقع SHOP-DZ
-        webView.loadUrl("https://shop-dz.gt.tc");
-
-        getOnBackPressedDispatcher().addCallback(
-                this,
-                new OnBackPressedCallback(true) {
-
-                    @Override
-                    public void handleOnBackPressed() {
-
-                        if (webView.canGoBack()) {
-
-                            webView.goBack();
-
-                        } else {
-
-                            finish();
-                        }
-                    }
-                }
-        );
     }
 
     @Override
     protected void onDestroy() {
 
+        /*
+         * لا ندمر WebView إذا كان قد تم نقله من Splash
+         * وتم وضعه في MainActivity.
+         */
         if (webView != null) {
             webView.destroy();
+            webView = null;
         }
 
         super.onDestroy();
