@@ -2,15 +2,17 @@ package com.shopdz.app;
 
 import android.annotation.SuppressLint;
 import android.graphics.Color;
+import android.graphics.SurfaceTexture;
+import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.os.Handler;
+import android.view.Surface;
+import android.view.TextureView;
 import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.VideoView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,12 +20,13 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-    private VideoView videoView;
+    private TextureView splashView;
 
-    private final Handler handler = new Handler();
+    private MediaPlayer mediaPlayer;
+    private Surface videoSurface;
 
     private boolean pageLoaded = false;
-    private boolean splashFinished = false;
+    private boolean videoFinished = false;
     private boolean splashClosed = false;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -38,20 +41,23 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
+        // =====================================================
+        // ROOT
+        // =====================================================
+
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.WHITE);
 
-        // =========================
+        // =====================================================
         // WEBVIEW
-        // =========================
+        // =====================================================
 
         webView = new WebView(this);
 
-        // مهم جدًا:
-        // الموقع يكون مخفيًا أثناء التحميل
-        webView.setVisibility(View.INVISIBLE);
-
         webView.setBackgroundColor(Color.WHITE);
+
+        // نخفي الموقع أثناء الـSplash
+        webView.setVisibility(View.INVISIBLE);
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
@@ -85,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
                 pageLoaded = true;
 
-                checkSplash();
+                tryShowWebsite();
             }
         });
 
@@ -97,73 +103,77 @@ public class MainActivity extends AppCompatActivity {
 
         root.addView(webView, webParams);
 
-        // =========================
-        // VIDEO
-        // =========================
+        // =====================================================
+        // SPLASH TEXTUREVIEW
+        // =====================================================
 
-        videoView = new VideoView(this);
+        splashView = new TextureView(this);
 
-        videoView.setBackgroundColor(Color.WHITE);
+        splashView.setOpaque(false);
 
-        FrameLayout.LayoutParams videoParams =
+        FrameLayout.LayoutParams splashParams =
                 new FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.MATCH_PARENT
                 );
 
-        root.addView(videoView, videoParams);
-
-        // الفيديو فوق الموقع
-        videoView.bringToFront();
+        root.addView(splashView, splashParams);
 
         setContentView(root);
 
-        // =========================
-        // ابدأ تحميل الموقع فورًا
-        // =========================
+        // =====================================================
+        // TEXTURE LISTENER
+        // =====================================================
+
+        splashView.setSurfaceTextureListener(
+                new TextureView.SurfaceTextureListener() {
+
+                    @Override
+                    public void onSurfaceTextureAvailable(
+                            SurfaceTexture surfaceTexture,
+                            int width,
+                            int height) {
+
+                        videoSurface = new Surface(surfaceTexture);
+
+                        startSplashVideo();
+                    }
+
+                    @Override
+                    public void onSurfaceTextureSizeChanged(
+                            SurfaceTexture surfaceTexture,
+                            int width,
+                            int height) {
+                    }
+
+                    @Override
+                    public boolean onSurfaceTextureDestroyed(
+                            SurfaceTexture surfaceTexture) {
+
+                        if (videoSurface != null) {
+                            videoSurface.release();
+                            videoSurface = null;
+                        }
+
+                        return true;
+                    }
+
+                    @Override
+                    public void onSurfaceTextureUpdated(
+                            SurfaceTexture surfaceTexture) {
+                    }
+                }
+        );
+
+        // =====================================================
+        // LOAD WEBSITE
+        // =====================================================
 
         webView.loadUrl("https://shop-dz.gt.tc");
 
-        // =========================
-        // تشغيل الفيديو
-        // =========================
-
-        videoView.setVideoPath(
-                "android.resource://" +
-                getPackageName() +
-                "/" +
-                R.raw.splash
-        );
-
-        videoView.setOnPreparedListener(mp -> {
-
-            mp.setVolume(0f, 0f);
-            mp.setLooping(false);
-
-            videoView.start();
-
-            // 2.5 ثانية
-            handler.postDelayed(() -> {
-
-                splashFinished = true;
-
-                checkSplash();
-
-            }, 2500);
-        });
-
-        videoView.setOnErrorListener((mp, what, extra) -> {
-
-            splashFinished = true;
-
-            checkSplash();
-
-            return true;
-        });
-
-        // =========================
-        // زر الرجوع
-        // =========================
+        // =====================================================
+        // BACK BUTTON
+        // =====================================================
 
         getOnBackPressedDispatcher().addCallback(
                 this,
@@ -172,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void handleOnBackPressed() {
 
-                        if (webView.canGoBack()) {
+                        if (webView != null && webView.canGoBack()) {
                             webView.goBack();
                         } else {
                             finish();
@@ -182,54 +192,124 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    private void checkSplash() {
+    // =========================================================
+    // START VIDEO
+    // =========================================================
 
-        /*
-         * لا نكشف الموقع إلا عندما:
-         *
-         * 1 - ينتهي الفيديو 2.5 ثانية
-         * 2 - تنتهي الصفحة من التحميل
-         */
+    private void startSplashVideo() {
 
-        if (splashFinished && pageLoaded) {
+        try {
 
-            /*
-             * ننتظر 300ms إضافية حتى ينتهي WebView
-             * من الرسم النهائي للصفحة.
-             */
-            handler.postDelayed(() -> {
+            mediaPlayer = MediaPlayer.create(
+                    this,
+                    R.raw.splash
+            );
 
-                closeSplash();
+            if (mediaPlayer == null) {
+                videoFinished = true;
+                tryShowWebsite();
+                return;
+            }
 
-            }, 300);
+            mediaPlayer.setSurface(videoSurface);
+
+            mediaPlayer.setVolume(0f, 0f);
+
+            mediaPlayer.setLooping(false);
+
+            mediaPlayer.setOnPreparedListener(mp -> {
+
+                mp.start();
+            });
+
+            mediaPlayer.setOnCompletionListener(mp -> {
+
+                videoFinished = true;
+
+                tryShowWebsite();
+            });
+
+            mediaPlayer.setOnErrorListener(
+                    (mp, what, extra) -> {
+
+                        videoFinished = true;
+
+                        tryShowWebsite();
+
+                        return true;
+                    }
+            );
+
+        } catch (Exception e) {
+
+            videoFinished = true;
+
+            tryShowWebsite();
         }
     }
 
-    private void closeSplash() {
+    // =========================================================
+    // SHOW WEBSITE
+    // =========================================================
+
+    private void tryShowWebsite() {
 
         if (splashClosed) {
             return;
         }
 
-        splashClosed = true;
+        /*
+         * لا نخفي الفيديو إلا عندما:
+         *
+         * الفيديو انتهى
+         * +
+         * الصفحة انتهت من التحميل
+         */
 
-        handler.removeCallbacksAndMessages(null);
+        if (videoFinished && pageLoaded) {
 
-        // أولًا أظهر الموقع
-        webView.setVisibility(View.VISIBLE);
+            splashClosed = true;
 
-        // ثم أخفِ الفيديو
-        videoView.stopPlayback();
-        videoView.setVisibility(View.GONE);
+            // إظهار الموقع كاملًا
+            webView.setVisibility(View.VISIBLE);
+
+            // إخفاء الفيديو
+            splashView.setVisibility(View.GONE);
+
+            if (mediaPlayer != null) {
+
+                try {
+                    mediaPlayer.stop();
+                } catch (Exception ignored) {
+                }
+
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+        }
     }
+
+    // =========================================================
+    // DESTROY
+    // =========================================================
 
     @Override
     protected void onDestroy() {
 
-        handler.removeCallbacksAndMessages(null);
+        if (mediaPlayer != null) {
 
-        if (videoView != null) {
-            videoView.stopPlayback();
+            try {
+                mediaPlayer.stop();
+            } catch (Exception ignored) {
+            }
+
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+
+        if (videoSurface != null) {
+            videoSurface.release();
+            videoSurface = null;
         }
 
         if (webView != null) {
