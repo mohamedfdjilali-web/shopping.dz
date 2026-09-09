@@ -2,36 +2,23 @@ package com.shopdz.app;
 
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.Surface;
-import android.view.TextureView;
 import android.view.View;
+import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private TextureView textureView;
-    private MediaPlayer mediaPlayer;
-    private Surface surface;
-
-    private final Handler handler = new Handler();
-
-    private boolean videoStarted = false;
-    private boolean opened = false;
+    private VideoView videoView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // منع أي لون أسود
-        getWindow().setBackgroundDrawableResource(
-                android.R.color.white
-        );
-
+        getWindow().setBackgroundDrawableResource(android.R.color.white);
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
@@ -42,112 +29,49 @@ public class SplashActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_splash);
 
-        textureView = findViewById(R.id.splashTexture);
+        videoView = findViewById(R.id.splashVideo);
 
-        textureView.setSurfaceTextureListener(
-                new TextureView.SurfaceTextureListener() {
-
-                    @Override
-                    public void onSurfaceTextureAvailable(
-                            SurfaceTexture surfaceTexture,
-                            int width,
-                            int height) {
-
-                        surface = new Surface(surfaceTexture);
-
-                        prepareVideo();
-                    }
-
-                    @Override
-                    public void onSurfaceTextureSizeChanged(
-                            SurfaceTexture surfaceTexture,
-                            int width,
-                            int height) {
-                    }
-
-                    @Override
-                    public boolean onSurfaceTextureDestroyed(
-                            SurfaceTexture surfaceTexture) {
-
-                        if (surface != null) {
-                            surface.release();
-                            surface = null;
-                        }
-
-                        return true;
-                    }
-
-                    @Override
-                    public void onSurfaceTextureUpdated(
-                            SurfaceTexture surfaceTexture) {
-                    }
-                }
+        Uri videoUri = Uri.parse(
+                "android.resource://" +
+                getPackageName() +
+                "/" +
+                R.raw.splash
         );
-    }
 
-    private void prepareVideo() {
+        videoView.setVideoURI(videoUri);
 
-        try {
+        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mp) {
 
-            mediaPlayer = MediaPlayer.create(
-                    this,
-                    R.raw.splash
-            );
+                mp.setVolume(0f, 0f);
+                mp.setLooping(false);
 
-            if (mediaPlayer == null) {
-                openMain();
-                return;
+                videoView.start();
             }
+        });
 
-            mediaPlayer.setSurface(surface);
+        videoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                openWebsite();
+            }
+        });
 
-            mediaPlayer.setVolume(0f, 0f);
+        videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+            @Override
+            public boolean onError(MediaPlayer mp, int what, int extra) {
 
-            mediaPlayer.setLooping(false);
+                // لا نغلق التطبيق عند حدوث خطأ
+                // نفتح الموقع مباشرة
+                openWebsite();
 
-            mediaPlayer.setOnPreparedListener(mp -> {
-
-                videoStarted = true;
-
-                mp.start();
-
-                /*
-                 * ننتظر 2.5 ثانية فقط.
-                 * بعدها نفتح الموقع.
-                 */
-                handler.postDelayed(() -> {
-                    openMain();
-                }, 2500);
-            });
-
-            mediaPlayer.setOnCompletionListener(mp -> {
-                openMain();
-            });
-
-            mediaPlayer.setOnErrorListener(
-                    (mp, what, extra) -> {
-
-                        openMain();
-
-                        return true;
-                    }
-            );
-
-        } catch (Exception e) {
-
-            openMain();
-        }
+                return true;
+            }
+        });
     }
 
-    private void openMain() {
-
-        if (opened) {
-            return;
-        }
-
-        opened = true;
-
-        handler.removeCallbacksAndMessages(null);
+    private void openWebsite() {
 
         Intent intent = new Intent(
                 SplashActivity.this,
@@ -164,25 +88,8 @@ public class SplashActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
 
-        handler.removeCallbacksAndMessages(null);
-
-        if (mediaPlayer != null) {
-
-            try {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
-            } catch (Exception ignored) {
-            }
-
-            mediaPlayer.reset();
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-
-        if (surface != null) {
-            surface.release();
-            surface = null;
+        if (videoView != null) {
+            videoView.stopPlayback();
         }
 
         super.onDestroy();
